@@ -8,7 +8,7 @@ import api from './api';
 export const getProducts = async () => {
     const response = await api.get('/products');
 
-    return response.data;
+    return response.data.data;
 };
 
 
@@ -19,7 +19,7 @@ export const getProducts = async () => {
 export const getMyProducts = async () => {
     const response = await api.get('/products/my-products');
 
-    return response.data;
+    return response.data.data;
 };
 
 
@@ -30,7 +30,7 @@ export const getMyProducts = async () => {
 export const getProductById = async (id) => {
     const response = await api.get(`/products/${id}`);
 
-    return response.data;
+    return response.data.data;
 };
 
 
@@ -44,7 +44,7 @@ export const createProduct = async (productData) => {
         productData
     );
 
-    return response.data;
+    return response.data.data;
 };
 
 
@@ -58,7 +58,7 @@ export const updateProduct = async (id, productData) => {
         productData
     );
 
-    return response.data;
+    return response.data.data;
 };
 
 
@@ -71,5 +71,5 @@ export const deleteProduct = async (id) => {
         `/products/${id}`
     );
 
-    return response.data;
+    return response.data.data;
 };
