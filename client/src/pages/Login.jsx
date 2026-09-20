@@ -62,12 +62,13 @@ const Login = () => {
         });
 
         const loggedInUser =
-            response?.user ||
-            response?.data?.user;
+    response?.user ||
+    response?.data?.user ||
+    response?.data;
 
-        const token =
-            response?.token ||
-            response?.data?.token;
+const token =
+    response?.token ||
+    response?.data?.token;
 
         if (!loggedInUser || !loggedInUser.role || !token) {
             throw new Error('Invalid login response from server.');
