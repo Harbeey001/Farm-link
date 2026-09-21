@@ -681,107 +681,20 @@ const Navbar = () => {
                                 </div>
                             )}
 
-                            {/* Dashboard */}
+             {/* Dashboard */}
 
-                            {user &&
-                                dashboardInfo && (
-                                    <div
-                                        className="position-relative"
-                                        ref={
-                                            dashboardRef
-                                        }
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setDashboardOpen(
-                                                    (
-                                                        prev
-                                                    ) =>
-                                                        !prev
-                                                )
-                                            }
-                                            className={`farmlink-nav-link farmlink-nav-button ${
-                                                dashboardActive
-                                                    ? 'active'
-                                                    : ''
-                                            }`}
-                                            aria-expanded={
-                                                dashboardOpen
-                                            }
-                                        >
-                                            <LayoutDashboard
-                                                size={
-                                                    17
-                                                }
-                                            />
-
-                                            Dashboard
-
-                                            <ChevronDown
-                                                size={
-                                                    15
-                                                }
-                                                className={
-                                                    dashboardOpen
-                                                        ? 'rotate-180'
-                                                        : ''
-                                                }
-                                            />
-                                        </button>
-
-                                        {dashboardOpen && (
-                                            <div className="farmlink-dashboard-dropdown">
-
-                                                <div className="farmlink-dropdown-profile">
-                                                    <div className="farmlink-user-avatar">
-                                                        {user.name
-                                                            ?.charAt(
-                                                                0
-                                                            )
-                                                            ?.toUpperCase() ||
-                                                            'U'}
-                                                    </div>
-
-                                                    <div className="min-w-0">
-                                                        <div className="fw-semibold text-dark text-truncate">
-                                                            {user.name ||
-                                                                'My Account'}
-                                                        </div>
-
-                                                        <small className="text-secondary text-capitalize">
-                                                            {
-                                                                user.role
-                                                            }
-                                                        </small>
-                                                    </div>
-                                                </div>
-
-                                                <Link
-                                                    to={
-                                                        dashboardInfo.path
-                                                    }
-                                                    onClick={
-                                                        closeMenu
-                                                    }
-                                                    className="farmlink-dropdown-link"
-                                                >
-                                                    <dashboardInfo.icon
-                                                        size={
-                                                            17
-                                                        }
-                                                    />
-
-                                                    <span>
-                                                        {
-                                                            dashboardInfo.label
-                                                        }
-                                                    </span>
-                                                </Link>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+{user && dashboardInfo && (
+    <Link
+        to={dashboardInfo.path}
+        onClick={closeMenu}
+        className={`farmlink-mobile-link ${
+            dashboardActive ? 'active' : ''
+        }`}
+    >
+        <LayoutDashboard size={18} />
+        Dashboard
+    </Link>
+)}
 
                             {/* Authentication */}
 
