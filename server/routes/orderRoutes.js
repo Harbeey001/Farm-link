@@ -7,13 +7,15 @@ const {
     getFarmerOrders,
     getOrderById,
     updateOrderStatus,
-    confirmDelivery
+    confirmDelivery,
+    getAllOrdersForAdmin
 } = require('../controllers/orderController');
 
 const {
     protect,
     buyerOnly,
-    farmerOnly
+    farmerOnly,
+    adminOnly
 } = require('../middleware/authMiddleware');
 
 
@@ -44,6 +46,19 @@ router.get(
 
 
 // ==========================
+// ADMIN ORDERS
+// ==========================
+
+// Get all orders for admin
+router.get(
+    '/admin/all',
+    protect,
+    adminOnly,
+    getAllOrdersForAdmin
+);
+
+
+// ==========================
 // SINGLE ORDER
 // ==========================
 
@@ -66,6 +81,13 @@ router.put(
     farmerOnly,
     updateOrderStatus
 );
+
+
+// ==========================
+// CONFIRM DELIVERY
+// ==========================
+
+// Buyer confirms delivery
 router.put(
     '/:id/confirm-delivery',
     protect,

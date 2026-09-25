@@ -5,7 +5,7 @@ const Payment = require('../models/Payment');
 const Product = require('../models/Product');
 const {
     createNotification
-} = require('./notificationController');
+} = require('../utils/notificationHelper');
 
 
 // ==========================
@@ -14,7 +14,8 @@ const {
 
 const paystackWebhook = async (req, res) => {
     try {
-        const secret = process.env.PAYSTACK_SECRET_KEY;
+        const secret =
+            process.env.PAYSTACK_SECRET_KEY;
 
         if (!secret) {
             console.error(
@@ -45,10 +46,23 @@ const paystackWebhook = async (req, res) => {
                 .update(req.rawBody)
                 .digest('hex');
 
+        const receivedBuffer =
+            Buffer.from(signature, 'utf8');
+
+        const expectedBuffer =
+            Buffer.from(expectedSignature, 'utf8');
+
+        if (
+            receivedBuffer.length !==
+            expectedBuffer.length
+        ) {
+            return res.sendStatus(401);
+        }
+
         const signaturesMatch =
             crypto.timingSafeEqual(
-                Buffer.from(signature),
-                Buffer.from(expectedSignature)
+                receivedBuffer,
+                expectedBuffer
             );
 
         if (!signaturesMatch) {
@@ -62,7 +76,22 @@ const paystackWebhook = async (req, res) => {
         const event = req.body;
 
         // ==========================
-        // ACKNOWLEDGE UNSUPPORTED EVENTS
+        // TRANSFER EVENTS
+        // ==========================
+
+        if (
+            event.event === 'transfer.success' ||
+            event.event === 'transfer.failed' ||
+            event.event === 'transfer.reversed'
+        ) {
+            return await handleTransferEvent(
+                event,
+                res
+            );
+        }
+
+        // ==========================
+        // ONLY PROCESS CHARGE.SUCCESS
         // ==========================
 
         if (
@@ -221,16 +250,154 @@ const paystackWebhook = async (req, res) => {
         return res.sendStatus(200);
 
     } catch (error) {
-
         console.error(
             'Paystack webhook error:',
             error
         );
 
-        // Always acknowledge after the
-        // request has been received and
-        // validated enough to avoid endless
-        // retries caused by application errors.
+        return res.sendStatus(200);
+    }
+};
+
+
+// ==========================
+// HANDLE PAYSTACK TRANSFER
+// ==========================
+
+const handleTransferEvent = async (
+    event,
+    res
+) => {
+    try {
+        const transfer =
+            event.data;
+
+        if (!transfer) {
+            return res.sendStatus(200);
+        }
+
+        const reference =
+            transfer.reference;
+
+        if (!reference) {
+            return res.sendStatus(200);
+        }
+
+        // ==========================
+        // FIND PAYMENT
+        // ==========================
+
+        const payment =
+            await Payment.findOne({
+                payoutReference: reference
+            });
+
+        if (!payment) {
+            console.warn(
+                `Payment not found for transfer: ${reference}`
+            );
+
+            return res.sendStatus(200);
+        }
+
+        const order =
+            await Order.findById(
+                payment.order
+            );
+
+        // ==========================
+        // TRANSFER SUCCESS
+        // ==========================
+
+        if (
+            event.event ===
+            'transfer.success'
+        ) {
+            if (
+                payment.payoutStatus ===
+                'paid'
+            ) {
+                return res.sendStatus(200);
+            }
+
+            payment.payoutStatus = 'paid';
+            payment.payoutAt = new Date();
+
+            await payment.save();
+
+            if (order) {
+                await createNotification({
+                    recipient: order.farmer,
+                    type: 'payment',
+                    title: 'Payout Successful',
+                    message:
+                        'Your FarmLink payout has been successfully transferred.',
+                    relatedId: order._id
+                });
+            }
+
+            return res.sendStatus(200);
+        }
+
+        // ==========================
+        // TRANSFER FAILED
+        // ==========================
+
+        if (
+            event.event ===
+            'transfer.failed'
+        ) {
+            payment.payoutStatus = 'failed';
+
+            await payment.save();
+
+            if (order) {
+                await createNotification({
+                    recipient: order.farmer,
+                    type: 'payment',
+                    title: 'Payout Failed',
+                    message:
+                        'Your FarmLink payout could not be completed.',
+                    relatedId: order._id
+                });
+            }
+
+            return res.sendStatus(200);
+        }
+
+        // ==========================
+        // TRANSFER REVERSED
+        // ==========================
+
+        if (
+            event.event ===
+            'transfer.reversed'
+        ) {
+            payment.payoutStatus = 'failed';
+
+            await payment.save();
+
+            if (order) {
+                await createNotification({
+                    recipient: order.farmer,
+                    type: 'payment',
+                    title: 'Payout Reversed',
+                    message:
+                        'Your FarmLink payout was reversed by Paystack.',
+                    relatedId: order._id
+                });
+            }
+
+            return res.sendStatus(200);
+        }
+
+        return res.sendStatus(200);
+
+    } catch (error) {
+        console.error(
+            'Paystack transfer webhook error:',
+            error
+        );
 
         return res.sendStatus(200);
     }

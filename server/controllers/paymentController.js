@@ -1041,8 +1041,6 @@ const getMyPayments = async (req, res) => {
         });
     }
 };
-
-
 // ==========================
 // PROCESS FARMER PAYOUT
 // ==========================
@@ -1130,11 +1128,24 @@ const processFarmerPayout = async (
             );
         }
 
+        // ==========================
+        // PREVENT DUPLICATE PAYOUT
+        // ==========================
+
         if (
             payment.payoutStatus ===
             'paid'
         ) {
             return payment;
+        }
+
+        if (
+            payment.payoutStatus ===
+            'processing'
+        ) {
+            throw new Error(
+                'A payout is already being processed for this order'
+            );
         }
 
         // ==========================
@@ -1183,64 +1194,85 @@ const processFarmerPayout = async (
         }
 
         // ==========================
-        // MARK PROCESSING
+        // CREATE TRANSFER REFERENCE
+        // ==========================
+
+        const transferReference =
+            `farmlink_payout_${Date.now()}_${Math.floor(
+                Math.random() * 100000
+            )}`;
+
+        // ==========================
+        // SAVE PROCESSING STATUS
         // ==========================
 
         payment.payoutStatus =
             'processing';
 
+        payment.payoutReference =
+            transferReference;
+
+        payment.payoutAt =
+            null;
+
         await payment.save();
 
         // ==========================
-        // CREATE TRANSFER REFERENCE
+        // CREATE PAYSTACK TRANSFER
         // ==========================
 
-        const transferReference =
-            `farmlink_payout_${Date.now()}`;
+        let transferResponse;
 
-        // ==========================
-        // CREATE TRANSFER
-        // ==========================
+        try {
+            transferResponse =
+                await axios.post(
+                    'https://api.paystack.co/transfer',
+                    {
+                        source: 'balance',
 
-        const transferResponse =
-            await axios.post(
-                'https://api.paystack.co/transfer',
-                {
-                    source: 'balance',
+                        amount:
+                            Math.round(
+                                Number(
+                                    payment.farmerAmount
+                                ) * 100
+                            ),
 
-                    amount:
-                        Math.round(
-                            Number(
-                                payment.farmerAmount
-                            ) * 100
-                        ),
+                        recipient:
+                            farmer.paystackRecipientCode,
 
-                    recipient:
-                        farmer.paystackRecipientCode,
+                        reason:
+                            `FarmLink payout for order ${order._id}`,
 
-                    reason:
-                        `FarmLink payout for order ${order._id}`,
+                        reference:
+                            transferReference
+                    },
+                    {
+                        headers: {
+                            Authorization:
+                                `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
 
-                    reference:
-                        transferReference
-                },
-                {
-                    headers: {
-                        Authorization:
-                            `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-
-                        'Content-Type':
-                            'application/json'
+                            'Content-Type':
+                                'application/json'
+                        }
                     }
-                }
-            );
+                );
+
+        } catch (transferError) {
+            payment.payoutStatus =
+                'failed';
+
+            await payment.save();
+
+            throw transferError;
+        }
 
         // ==========================
-        // CHECK TRANSFER RESPONSE
+        // CHECK PAYSTACK RESPONSE
         // ==========================
 
         if (
-            !transferResponse.data?.status
+            !transferResponse.data?.status ||
+            !transferResponse.data?.data
         ) {
             payment.payoutStatus =
                 'failed';
@@ -1250,27 +1282,22 @@ const processFarmerPayout = async (
             throw new Error(
                 transferResponse.data
                     ?.message ||
-                'Paystack transfer failed'
+                'Paystack transfer could not be initiated'
             );
         }
 
         // ==========================
-        // MARK PAID
+        // IMPORTANT:
+        // DO NOT MARK AS PAID HERE.
+        //
+        // Paystack may still be processing
+        // the transfer.
+        //
+        // The webhook will update:
+        //
+        // processing → paid
+        // processing → failed
         // ==========================
-
-        payment.payoutStatus =
-            'paid';
-
-        payment.payoutReference =
-            transferResponse.data
-                ?.data
-                ?.reference ||
-            transferReference;
-
-        payment.payoutAt =
-            new Date();
-
-        await payment.save();
 
         return payment;
 
@@ -1282,7 +1309,7 @@ const processFarmerPayout = async (
         );
 
         // ==========================
-        // MARK FAILED
+        // MARK FAILED WHEN APPROPRIATE
         // ==========================
 
         try {
@@ -1317,6 +1344,7 @@ const processFarmerPayout = async (
         throw error;
     }
 };
+
 
 
 // ==========================

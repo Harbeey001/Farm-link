@@ -640,6 +640,40 @@ const confirmDelivery = async (req, res) => {
 
 
 // ==========================
+// GET ALL ORDERS - ADMIN
+// ==========================
+
+const getAllOrdersForAdmin = async (req, res) => {
+    try {
+        const orders = await populateOrder(
+            Order.find().sort({
+                createdAt: -1
+            })
+        );
+
+        return res.status(200).json({
+            success: true,
+            message:
+                'All orders fetched successfully',
+            data: orders
+        });
+
+    } catch (error) {
+        console.error(
+            'Get all admin orders error:',
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message:
+                'Server error while fetching orders'
+        });
+    }
+};
+
+
+// ==========================
 // EXPORT
 // ==========================
 
@@ -648,5 +682,6 @@ module.exports = {
     getFarmerOrders,
     getOrderById,
     updateOrderStatus,
-    confirmDelivery
+    confirmDelivery,
+    getAllOrdersForAdmin
 };
