@@ -32,3 +32,16 @@ export const getMyPayments = async () => {
 
     return response.data;
 };
+// ==========================
+// ADMIN FARMER PAYOUT
+// ==========================
+
+export const requestFarmerPayout = async (
+    orderId
+) => {
+    const response = await api.post(
+        `/payments/payout/${orderId}`
+    );
+
+    return response.data;
+};

@@ -62,28 +62,30 @@ const Navbar = () => {
     // ==========================
 
     const fetchNotifications = async () => {
-    if (!user) {
-        setNotifications([]);
-        return;
-    }
+        if (!user) {
+            setNotifications([]);
+            return;
+        }
 
-    try {
-        setNotificationsLoading(true);
+        try {
+            setNotificationsLoading(true);
 
-        const response = await getMyNotifications();
+            const response = await getMyNotifications();
 
-        setNotifications(
-            Array.isArray(response) ? response : []
-        );
-    } catch (error) {
-        console.error(
-            'Fetch notifications error:',
-            error
-        );
-    } finally {
-        setNotificationsLoading(false);
-    }
-};
+            setNotifications(
+                Array.isArray(response?.data)
+                    ? response.data
+                    : []
+            );
+        } catch (error) {
+            console.error(
+                'Fetch notifications error:',
+                error
+            );
+        } finally {
+            setNotificationsLoading(false);
+        }
+    };
 
     // ==========================
     // MARK ONE AS READ
@@ -101,18 +103,18 @@ const Navbar = () => {
             if (!response?.success) {
                 throw new Error(
                     response?.message ||
-                        'Unable to mark notification as read'
+                    'Unable to mark notification as read'
                 );
             }
 
             setNotifications((prev) =>
                 prev.map((notification) =>
                     notification._id ===
-                    notificationId
+                        notificationId
                         ? {
-                              ...notification,
-                              isRead: true,
-                          }
+                            ...notification,
+                            isRead: true,
+                        }
                         : notification
                 )
             );
@@ -136,7 +138,7 @@ const Navbar = () => {
             if (!response?.success) {
                 throw new Error(
                     response?.message ||
-                        'Unable to mark notifications as read'
+                    'Unable to mark notifications as read'
                 );
             }
 
@@ -252,52 +254,53 @@ const Navbar = () => {
     // ==========================
 
     useEffect(() => {
-    let ignore = false;
+        let ignore = false;
 
-    if (!user) {
-        setNotifications([]);
-        setNotificationsLoading(false);
-        return;
-    }
-
-    const loadNotifications = async () => {
-        try {
-            setNotificationsLoading(true);
-
-            const response = await getMyNotifications();
-
-            if (ignore) return;
-
-            setNotifications(
-                Array.isArray(response)
-                    ? response
-                    : []
-            );
-        } catch (error) {
-            if (ignore) return;
-
-            console.error(
-                'Fetch notifications error:',
-                error
-            );
-        } finally {
-            if (!ignore) {
-                setNotificationsLoading(false);
-            }
+        if (!user) {
+            setNotifications([]);
+            setNotificationsLoading(false);
+            return;
         }
-    };
 
-    loadNotifications();
+        const loadNotifications = async () => {
+            try {
+                setNotificationsLoading(true);
 
-    const interval = setInterval(() => {
+                const response = await getMyNotifications();
+                // console.log('NOTIFICATION RESPONSE:', response);
+
+                if (ignore) return;
+
+                setNotifications(
+                    Array.isArray(response?.data)
+                        ? response.data
+                        : []
+                );
+            } catch (error) {
+                if (ignore) return;
+
+                console.error(
+                    'Fetch notifications error:',
+                    error
+                );
+            } finally {
+                if (!ignore) {
+                    setNotificationsLoading(false);
+                }
+            }
+        };
+
         loadNotifications();
-    }, 30000);
 
-    return () => {
-        ignore = true;
-        clearInterval(interval);
-    };
-}, [user]);
+        const interval = setInterval(() => {
+            loadNotifications();
+        }, 30000);
+
+        return () => {
+            ignore = true;
+            clearInterval(interval);
+        };
+    }, [user]);
 
     // ==========================
     // CLOSE DROPDOWNS OUTSIDE
@@ -358,11 +361,11 @@ const Navbar = () => {
 
     const dashboardActive =
         location.pathname ===
-            '/buyer-dashboard' ||
+        '/buyer-dashboard' ||
         location.pathname ===
-            '/farmer-dashboard' ||
+        '/farmer-dashboard' ||
         location.pathname ===
-            '/admin-dashboard';
+        '/admin-dashboard';
 
     // ==========================
     // DASHBOARD INFO
@@ -451,11 +454,10 @@ const Navbar = () => {
                             <Link
                                 to="/marketplace"
                                 onClick={closeMenu}
-                                className={`farmlink-nav-link ${
-                                    marketplaceActive
-                                        ? 'active'
-                                        : ''
-                                }`}
+                                className={`farmlink-nav-link ${marketplaceActive
+                                    ? 'active'
+                                    : ''
+                                    }`}
                             >
                                 <ShoppingBasket
                                     size={17}
@@ -469,11 +471,10 @@ const Navbar = () => {
                                 <Link
                                     to="/support"
                                     onClick={closeMenu}
-                                    className={`farmlink-nav-link ${
-                                        supportActive
-                                            ? 'active'
-                                            : ''
-                                    }`}
+                                    className={`farmlink-nav-link ${supportActive
+                                        ? 'active'
+                                        : ''
+                                        }`}
                                 >
                                     <HelpCircle
                                         size={17}
@@ -511,13 +512,13 @@ const Navbar = () => {
 
                                         {unreadCount >
                                             0 && (
-                                            <span className="farmlink-notification-badge">
-                                                {unreadCount >
-                                                99
-                                                    ? '99+'
-                                                    : unreadCount}
-                                            </span>
-                                        )}
+                                                <span className="farmlink-notification-badge">
+                                                    {unreadCount >
+                                                        99
+                                                        ? '99+'
+                                                        : unreadCount}
+                                                </span>
+                                            )}
                                     </button>
 
                                     {notificationsOpen && (
@@ -532,32 +533,32 @@ const Navbar = () => {
 
                                                     {unreadCount >
                                                         0 && (
-                                                        <small className="text-muted d-block">
-                                                            {
-                                                                unreadCount
-                                                            }{' '}
-                                                            unread
-                                                        </small>
-                                                    )}
+                                                            <small className="text-muted d-block">
+                                                                {
+                                                                    unreadCount
+                                                                }{' '}
+                                                                unread
+                                                            </small>
+                                                        )}
                                                 </div>
 
                                                 {unreadCount >
                                                     0 && (
-                                                    <button
-                                                        type="button"
-                                                        className="farmlink-mark-all-button"
-                                                        onClick={
-                                                            handleMarkAllAsRead
-                                                        }
-                                                    >
-                                                        <CheckCheck
-                                                            size={
-                                                                14
+                                                        <button
+                                                            type="button"
+                                                            className="farmlink-mark-all-button"
+                                                            onClick={
+                                                                handleMarkAllAsRead
                                                             }
-                                                        />
-                                                        Mark all read
-                                                    </button>
-                                                )}
+                                                        >
+                                                            <CheckCheck
+                                                                size={
+                                                                    14
+                                                                }
+                                                            />
+                                                            Mark all read
+                                                        </button>
+                                                    )}
 
                                             </div>
 
@@ -565,7 +566,7 @@ const Navbar = () => {
 
                                                 {notificationsLoading &&
                                                     notifications.length ===
-                                                        0 && (
+                                                    0 && (
                                                         <div className="farmlink-notification-empty">
                                                             <div className="spinner-border spinner-border-sm text-success mb-2" />
                                                             <div>
@@ -576,7 +577,7 @@ const Navbar = () => {
 
                                                 {!notificationsLoading &&
                                                     notifications.length ===
-                                                        0 && (
+                                                    0 && (
                                                         <div className="farmlink-notification-empty">
                                                             <Bell
                                                                 size={
@@ -614,11 +615,10 @@ const Navbar = () => {
                                                                         notification._id
                                                                     )
                                                                 }
-                                                                className={`farmlink-notification-item ${
-                                                                    notification.isRead
-                                                                        ? ''
-                                                                        : 'unread'
-                                                                }`}
+                                                                className={`farmlink-notification-item ${notification.isRead
+                                                                    ? ''
+                                                                    : 'unread'
+                                                                    }`}
                                                             >
 
                                                                 <div
@@ -671,30 +671,29 @@ const Navbar = () => {
 
                                             {notifications.length >
                                                 10 && (
-                                                <div className="farmlink-notification-footer">
-                                                    Showing latest 10 notifications
-                                                </div>
-                                            )}
+                                                    <div className="farmlink-notification-footer">
+                                                        Showing latest 10 notifications
+                                                    </div>
+                                                )}
 
                                         </div>
                                     )}
                                 </div>
                             )}
 
-             {/* Dashboard */}
+                            {/* Dashboard */}
 
-{user && dashboardInfo && (
-    <Link
-        to={dashboardInfo.path}
-        onClick={closeMenu}
-        className={`farmlink-mobile-link ${
-            dashboardActive ? 'active' : ''
-        }`}
-    >
-        <LayoutDashboard size={18} />
-        Dashboard
-    </Link>
-)}
+                            {user && dashboardInfo && (
+                                <Link
+                                    to={dashboardInfo.path}
+                                    onClick={closeMenu}
+                                    className={`farmlink-mobile-link ${dashboardActive ? 'active' : ''
+                                        }`}
+                                >
+                                    <LayoutDashboard size={18} />
+                                    Dashboard
+                                </Link>
+                            )}
 
                             {/* Authentication */}
 
@@ -782,11 +781,10 @@ const Navbar = () => {
                             <Link
                                 to="/marketplace"
                                 onClick={closeMenu}
-                                className={`farmlink-mobile-link ${
-                                    marketplaceActive
-                                        ? 'active'
-                                        : ''
-                                }`}
+                                className={`farmlink-mobile-link ${marketplaceActive
+                                    ? 'active'
+                                    : ''
+                                    }`}
                             >
                                 <ShoppingBasket
                                     size={18}
@@ -800,11 +798,10 @@ const Navbar = () => {
                                 <Link
                                     to="/support"
                                     onClick={closeMenu}
-                                    className={`farmlink-mobile-link ${
-                                        supportActive
-                                            ? 'active'
-                                            : ''
-                                    }`}
+                                    className={`farmlink-mobile-link ${supportActive
+                                        ? 'active'
+                                        : ''
+                                        }`}
                                 >
                                     <HelpCircle
                                         size={18}
@@ -840,13 +837,13 @@ const Navbar = () => {
 
                                                 {unreadCount >
                                                     0 && (
-                                                    <span className="farmlink-mobile-notification-dot">
-                                                        {unreadCount >
-                                                        99
-                                                            ? '99+'
-                                                            : unreadCount}
-                                                    </span>
-                                                )}
+                                                        <span className="farmlink-mobile-notification-dot">
+                                                            {unreadCount >
+                                                                99
+                                                                ? '99+'
+                                                                : unreadCount}
+                                                        </span>
+                                                    )}
                                             </span>
 
                                             Notifications
@@ -873,27 +870,27 @@ const Navbar = () => {
 
                                                 {unreadCount >
                                                     0 && (
-                                                    <button
-                                                        type="button"
-                                                        className="farmlink-mark-all-button"
-                                                        onClick={
-                                                            handleMarkAllAsRead
-                                                        }
-                                                    >
-                                                        <CheckCheck
-                                                            size={
-                                                                14
+                                                        <button
+                                                            type="button"
+                                                            className="farmlink-mark-all-button"
+                                                            onClick={
+                                                                handleMarkAllAsRead
                                                             }
-                                                        />
-                                                        Mark all read
-                                                    </button>
-                                                )}
+                                                        >
+                                                            <CheckCheck
+                                                                size={
+                                                                    14
+                                                                }
+                                                            />
+                                                            Mark all read
+                                                        </button>
+                                                    )}
 
                                             </div>
 
                                             {notificationsLoading &&
                                                 notifications.length ===
-                                                    0 && (
+                                                0 && (
                                                     <div className="text-center py-3 text-muted">
                                                         <div className="spinner-border spinner-border-sm text-success mb-2" />
                                                         <div>
@@ -904,7 +901,7 @@ const Navbar = () => {
 
                                             {!notificationsLoading &&
                                                 notifications.length ===
-                                                    0 && (
+                                                0 && (
                                                     <div className="text-center py-3 text-muted">
                                                         <Bell
                                                             size={
@@ -938,11 +935,10 @@ const Navbar = () => {
                                                                     notification._id
                                                                 )
                                                             }
-                                                            className={`farmlink-mobile-notification-item ${
-                                                                notification.isRead
-                                                                    ? ''
-                                                                    : 'unread'
-                                                            }`}
+                                                            className={`farmlink-mobile-notification-item ${notification.isRead
+                                                                ? ''
+                                                                : 'unread'
+                                                                }`}
                                                         >
 
                                                             <div
@@ -1012,11 +1008,10 @@ const Navbar = () => {
                                                         !prev
                                                 )
                                             }
-                                            className={`farmlink-mobile-link farmlink-mobile-dashboard-button ${
-                                                dashboardActive
-                                                    ? 'active'
-                                                    : ''
-                                            }`}
+                                            className={`farmlink-mobile-link farmlink-mobile-dashboard-button ${dashboardActive
+                                                ? 'active'
+                                                : ''
+                                                }`}
                                             aria-expanded={
                                                 dashboardOpen
                                             }

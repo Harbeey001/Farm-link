@@ -39,6 +39,13 @@ import {
     ChevronUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import {
+    getAllOrdersForAdmin,
+} from '../services/orderService';
+
+import {
+    requestFarmerPayout,
+} from '../services/paymentService';
 
 const API_BASE_URL =
     import.meta.env.VITE_API_URL ||
@@ -54,6 +61,10 @@ const AdminDashboard = () => {
     const [products, setProducts] = useState([]);
     const [requests, setRequests] = useState([]);
     const [supportTickets, setSupportTickets] = useState([]);
+
+    const [orders, setOrders] = useState([]);
+    const [ordersLoading, setOrdersLoading] = useState(false);
+    const [payoutLoading, setPayoutLoading] = useState(null);
 
     // Backend-supported periods:
     // weekly, monthly, annually
@@ -86,6 +97,7 @@ const AdminDashboard = () => {
         if (pathname === '/admin-dashboard/users') return 'users';
         if (pathname === '/admin-dashboard/products') return 'products';
         if (pathname === '/admin-dashboard/requests') return 'requests';
+        if (pathname === '/admin-dashboard/orders') return 'orders';
         if (pathname === '/admin-dashboard/support') return 'support';
         if (pathname === '/admin-dashboard/access') return 'access';
         if (pathname === '/admin-dashboard/system') return 'system';
@@ -117,6 +129,12 @@ const AdminDashboard = () => {
             label: 'Requests',
             icon: ClipboardList,
             path: '/admin-dashboard/requests',
+        },
+        {
+            key: 'orders',
+            label: 'Orders & Payouts',
+            icon: ShoppingCart,
+            path: '/admin-dashboard/orders',
         },
         {
             key: 'support',
@@ -184,6 +202,39 @@ const AdminDashboard = () => {
             }
         } finally {
             setSupportLoading(false);
+        }
+    };
+
+    const fetchAdminOrders = async () => {
+        try {
+            setOrdersLoading(true);
+
+            const response =
+                await getAllOrdersForAdmin();
+
+            const orderData =
+                response?.data ||
+                response?.orders ||
+                [];
+
+            setOrders(
+                Array.isArray(orderData)
+                    ? orderData
+                    : []
+            );
+        } catch (err) {
+            console.error(
+                'Admin orders error:',
+                err
+            );
+
+            setError(
+                err?.response?.data?.message ||
+                err?.message ||
+                'Unable to load orders.'
+            );
+        } finally {
+            setOrdersLoading(false);
         }
     };
 
@@ -345,6 +396,35 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleFarmerPayout = async (orderId) => {
+        try {
+            setPayoutLoading(orderId);
+
+            const response =
+                await requestFarmerPayout(orderId);
+
+            alert(
+                response?.message ||
+                'Farmer payout initiated successfully.'
+            );
+
+            await fetchAdminOrders();
+        } catch (err) {
+            console.error(
+                'Farmer payout error:',
+                err
+            );
+
+            alert(
+                err?.response?.data?.message ||
+                err?.message ||
+                'Unable to process farmer payout.'
+            );
+        } finally {
+            setPayoutLoading(null);
+        }
+    };
+
     useEffect(() => {
         let ignore = false;
 
@@ -360,6 +440,12 @@ const AdminDashboard = () => {
             ignore = true;
         };
     }, [period]);
+
+    useEffect(() => {
+        if (currentSection === 'orders') {
+            fetchAdminOrders();
+        }
+    }, [currentSection]);
 
     const formatCurrency = (value) => {
         const amount = Number(value || 0);
@@ -1016,6 +1102,12 @@ const AdminDashboard = () => {
             title: 'Request Management',
             subtitle:
                 'Monitor buyer requests and farmer responses.',
+
+            orders: {
+                title: 'Orders & Payouts',
+                subtitle:
+                    'Monitor orders and manage eligible farmer payouts.'
+            },
         },
         support: {
             title: 'Support Center',
@@ -1037,36 +1129,32 @@ const AdminDashboard = () => {
     // Keep the rest of your existing AdminDashboard.jsx
     // from renderHeader() downward exactly as it is.
 
+console.log('CURRENT SECTION:', currentSection);
+console.log('PAGE META:', pageMeta);
 
-    const renderHeader = () => (
+    const renderHeader = () => {
+    const currentPage =
+        pageMeta[currentSection] ||
+        pageMeta.dashboard;
+
+    return (
         <header className="admin-topbar">
             <div>
                 <div className="admin-breadcrumb">
                     Administration
                     <ChevronRight size={14} />
+
                     <span>
-                        {
-                            pageMeta[
-                                currentSection
-                            ].title
-                        }
+                        {currentPage.title}
                     </span>
                 </div>
 
                 <h1>
-                    {
-                        pageMeta[
-                            currentSection
-                        ].title
-                    }
+                    {currentPage.title}
                 </h1>
 
                 <p>
-                    {
-                        pageMeta[
-                            currentSection
-                        ].subtitle
-                    }
+                    {currentPage.subtitle}
                 </p>
             </div>
 
@@ -1078,61 +1166,68 @@ const AdminDashboard = () => {
                             currentSection ===
                             'support'
                         ) {
-                            fetchSupportTickets(
-                                true
-                            );
+                            fetchSupportTickets(true);
+                        } else if (
+                            currentSection ===
+                            'orders'
+                        ) {
+                            fetchAdminOrders();
                         } else {
                             fetchAdminData(true);
                         }
                     }}
                     disabled={
                         refreshing ||
-                        supportLoading
+                        supportLoading ||
+                        ordersLoading
                     }
                 >
                     <RefreshCw
                         size={17}
                         className={
                             refreshing ||
-                                supportLoading
+                            supportLoading ||
+                            ordersLoading
                                 ? 'admin-spin'
                                 : ''
                         }
                     />
 
                     {refreshing ||
-                        supportLoading
+                    supportLoading ||
+                    ordersLoading
                         ? 'Refreshing'
                         : 'Refresh'}
                 </button>
 
                 {currentSection ===
                     'dashboard' && (
-                        <select
-                            value={period}
-                            onChange={(event) =>
-                                setPeriod(
-                                    event.target.value
-                                )
-                            }
-                            className="admin-period-select"
-                        >
-                            <option value="weekly">
-                                This week
-                            </option>
+                    <select
+                        value={period}
+                        onChange={(event) =>
+                            setPeriod(
+                                event.target.value
+                            )
+                        }
+                        className="admin-period-select"
+                    >
+                        <option value="weekly">
+                            This week
+                        </option>
 
-                            <option value="monthly">
-                                This month
-                            </option>
+                        <option value="monthly">
+                            This month
+                        </option>
 
-                            <option value="annually">
-                                This year
-                            </option>
-                        </select>
-                    )}
+                        <option value="annually">
+                            This year
+                        </option>
+                    </select>
+                )}
             </div>
         </header>
     );
+};
 
     const renderMetricCard = ({
         icon,
@@ -3172,6 +3267,324 @@ const AdminDashboard = () => {
         </>
     );
 
+    const renderOrders = () => {
+        const canPayout = (order) => {
+            const payment =
+                order?.payment ||
+                order?.paymentId ||
+                {};
+
+            const paymentStatus =
+                order?.paymentStatus ||
+                payment?.status;
+
+            const deliveryStatus =
+                order?.deliveryStatus;
+
+            const payoutStatus =
+                payment?.payoutStatus ||
+                order?.payoutStatus ||
+                'pending';
+
+            return (
+                order?.status === 'completed' &&
+                deliveryStatus === 'confirmed' &&
+                paymentStatus === 'paid' &&
+                payoutStatus === 'pending'
+            );
+        };
+
+        return (
+            <>
+                <section className="admin-section">
+                    <div className="admin-section-heading">
+                        <div>
+                            <span className="admin-eyebrow">
+                                Transactions
+                            </span>
+
+                            <h2>
+                                Orders & Farmer Payouts
+                            </h2>
+
+                            <p>
+                                Monitor completed orders
+                                and manage eligible farmer
+                                payouts.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="admin-refresh-button"
+                            onClick={fetchAdminOrders}
+                            disabled={ordersLoading}
+                        >
+                            <RefreshCw
+                                size={16}
+                                className={
+                                    ordersLoading
+                                        ? 'admin-spin'
+                                        : ''
+                                }
+                            />
+
+                            Refresh
+                        </button>
+                    </div>
+
+                    {ordersLoading ? (
+                        <div className="admin-empty-state">
+                            <RefreshCw
+                                size={24}
+                                className="admin-spin"
+                            />
+
+                            <strong>
+                                Loading orders...
+                            </strong>
+                        </div>
+                    ) : orders.length === 0 ? (
+                        <div className="admin-empty-state">
+                            <ShoppingCart size={30} />
+
+                            <strong>
+                                No orders found
+                            </strong>
+
+                            <span>
+                                Orders will appear here
+                                when buyers place them.
+                            </span>
+                        </div>
+                    ) : (
+                        <div className="admin-table-card">
+                            <div className="admin-table-wrap">
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                Order
+                                            </th>
+
+                                            <th>
+                                                Buyer
+                                            </th>
+
+                                            <th>
+                                                Farmer
+                                            </th>
+
+                                            <th>
+                                                Amount
+                                            </th>
+
+                                            <th>
+                                                Payment
+                                            </th>
+
+                                            <th>
+                                                Delivery
+                                            </th>
+
+                                            <th>
+                                                Payout
+                                            </th>
+
+                                            <th>
+                                                Action
+                                            </th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        {orders.map(
+                                            (order) => {
+                                                const payment =
+                                                    order?.payment ||
+                                                    order?.paymentId ||
+                                                    {};
+
+                                                const paymentStatus =
+                                                    order?.paymentStatus ||
+                                                    payment?.status ||
+                                                    'pending';
+
+                                                const payoutStatus =
+                                                    payment?.payoutStatus ||
+                                                    order?.payoutStatus ||
+                                                    'pending';
+
+                                                const buyer =
+                                                    order?.buyer;
+
+                                                const farmer =
+                                                    order?.farmer;
+
+                                                const product =
+                                                    order?.product;
+
+                                                return (
+                                                    <tr
+                                                        key={
+                                                            order._id
+                                                        }
+                                                    >
+                                                        <td>
+                                                            <strong>
+                                                                #
+                                                                {String(
+                                                                    order._id
+                                                                ).slice(
+                                                                    -8
+                                                                )}
+                                                            </strong>
+
+                                                            <small>
+                                                                {formatDate(
+                                                                    order.createdAt
+                                                                )}
+                                                            </small>
+                                                        </td>
+
+                                                        <td>
+                                                            <strong>
+                                                                {buyer?.name ||
+                                                                    '—'}
+                                                            </strong>
+
+                                                            <small>
+                                                                {buyer?.email ||
+                                                                    '—'}
+                                                            </small>
+                                                        </td>
+
+                                                        <td>
+                                                            <strong>
+                                                                {farmer?.name ||
+                                                                    '—'}
+                                                            </strong>
+
+                                                            <small>
+                                                                {farmer?.email ||
+                                                                    '—'}
+                                                            </small>
+                                                        </td>
+
+                                                        <td>
+                                                            <strong>
+                                                                {formatCurrency(
+                                                                    order.totalAmount ||
+                                                                    order.amount ||
+                                                                    0
+                                                                )}
+                                                            </strong>
+
+                                                            <small>
+                                                                {product?.name ||
+                                                                    'Product'}
+                                                            </small>
+                                                        </td>
+
+                                                        <td>
+                                                            <span
+                                                                className={`admin-status-badge ${getStatusClass(
+                                                                    paymentStatus
+                                                                )}`}
+                                                            >
+                                                                {paymentStatus}
+                                                            </span>
+                                                        </td>
+
+                                                        <td>
+                                                            <span
+                                                                className={`admin-status-badge ${getStatusClass(
+                                                                    order.deliveryStatus
+                                                                )}`}
+                                                            >
+                                                                {order.deliveryStatus ||
+                                                                    'pending'}
+                                                            </span>
+                                                        </td>
+
+                                                        <td>
+                                                            <span
+                                                                className={`admin-status-badge ${getStatusClass(
+                                                                    payoutStatus
+                                                                )}`}
+                                                            >
+                                                                {payoutStatus}
+                                                            </span>
+                                                        </td>
+
+                                                        <td>
+                                                            {canPayout(
+                                                                order
+                                                            ) ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="admin-action-button"
+                                                                    onClick={() =>
+                                                                        handleFarmerPayout(
+                                                                            order._id
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        payoutLoading ===
+                                                                        order._id
+                                                                    }
+                                                                >
+                                                                    {payoutLoading ===
+                                                                        order._id ? (
+                                                                        <>
+                                                                            <RefreshCw
+                                                                                size={
+                                                                                    14
+                                                                                }
+                                                                                className="admin-spin"
+                                                                            />
+
+                                                                            Processing
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <CreditCard
+                                                                                size={
+                                                                                    14
+                                                                                }
+                                                                            />
+
+                                                                            Process
+                                                                            Payout
+                                                                        </>
+                                                                    )}
+                                                                </button>
+                                                            ) : (
+                                                                <span className="admin-muted-text">
+                                                                    {payoutStatus ===
+                                                                        'paid'
+                                                                        ? 'Already paid'
+                                                                        : payoutStatus ===
+                                                                            'processing'
+                                                                            ? 'Processing'
+                                                                            : 'Not eligible'}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </section>
+            </>
+        );
+    };
+
     const renderCurrentSection = () => {
         switch (currentSection) {
             case 'users':
@@ -3182,6 +3595,9 @@ const AdminDashboard = () => {
 
             case 'requests':
                 return renderRequests();
+
+            case 'orders':
+                return renderOrders();
 
             case 'support':
                 return renderSupport();

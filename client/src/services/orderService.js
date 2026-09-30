@@ -52,3 +52,15 @@ export const confirmDelivery = async (id) => {
 
     return response.data;
 };
+
+// ==========================
+// ADMIN ORDERS
+// ==========================
+
+export const getAllOrdersForAdmin = async () => {
+    const response = await api.get(
+        '/orders/admin/all'
+    );
+
+    return response.data;
+};

@@ -1,18 +1,23 @@
-const bcrypt = require('bcryptjs');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
+require('dotenv').config();
 
+const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const User = require('./models/User');
 const connectDB = require('./config/db');
-
-dotenv.config();
 
 const createAdmin = async () => {
     try {
         await connectDB();
 
-        const adminEmail = 'admin@farmlink.com';
-        const adminPassword = 'Admin@123456';
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+
+        if (!adminEmail || !adminPassword) {
+            console.error(
+                'ADMIN_EMAIL and ADMIN_PASSWORD must be set in the environment variables.'
+            );
+            process.exit(1);
+        }
 
         const existingAdmin = await User.findOne({
             email: adminEmail

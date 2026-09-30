@@ -1045,28 +1045,26 @@ const getMyPayments = async (req, res) => {
 // PROCESS FARMER PAYOUT
 // ==========================
 
-const processFarmerPayout = async (
-    orderId
-) => {
+const processFarmerPayout = async (orderId) => {
     try {
         // ==========================
         // VALIDATE ORDER ID
         // ==========================
 
         if (
-            !mongoose.Types.ObjectId.isValid(
-                orderId
-            )
+            !mongoose.Types.ObjectId.isValid(orderId)
         ) {
             throw new Error(
                 'Invalid order ID'
             );
         }
 
+        // ==========================
+        // FIND ORDER
+        // ==========================
+
         const order =
-            await Order.findById(
-                orderId
-            );
+            await Order.findById(orderId);
 
         if (!order) {
             throw new Error(
@@ -1075,12 +1073,11 @@ const processFarmerPayout = async (
         }
 
         // ==========================
-        // CHECK ORDER STATE
+        // PAYOUT CONDITIONS
         // ==========================
 
         if (
-            order.status !==
-            'completed'
+            order.status !== 'completed'
         ) {
             throw new Error(
                 'Order must be completed before payout'
@@ -1088,17 +1085,15 @@ const processFarmerPayout = async (
         }
 
         if (
-            order.deliveryStatus !==
-            'confirmed'
+            order.deliveryStatus !== 'confirmed'
         ) {
             throw new Error(
-                'Delivery must be confirmed before payout'
+                'Buyer must confirm delivery before payout'
             );
         }
 
         if (
-            order.paymentStatus !==
-            'paid'
+            order.paymentStatus !== 'paid'
         ) {
             throw new Error(
                 'Payment must be completed before payout'
@@ -1133,18 +1128,18 @@ const processFarmerPayout = async (
         // ==========================
 
         if (
-            payment.payoutStatus ===
-            'paid'
+            payment.payoutStatus === 'paid'
         ) {
-            return payment;
+            throw new Error(
+                'Farmer payout has already been completed'
+            );
         }
 
         if (
-            payment.payoutStatus ===
-            'processing'
+            payment.payoutStatus === 'processing'
         ) {
             throw new Error(
-                'A payout is already being processed for this order'
+                'Farmer payout is already being processed'
             );
         }
 
@@ -1194,7 +1189,7 @@ const processFarmerPayout = async (
         }
 
         // ==========================
-        // CREATE TRANSFER REFERENCE
+        // CREATE UNIQUE REFERENCE
         // ==========================
 
         const transferReference =
@@ -1203,7 +1198,7 @@ const processFarmerPayout = async (
             )}`;
 
         // ==========================
-        // SAVE PROCESSING STATUS
+        // SAVE PROCESSING STATE
         // ==========================
 
         payment.payoutStatus =
@@ -1212,8 +1207,7 @@ const processFarmerPayout = async (
         payment.payoutReference =
             transferReference;
 
-        payment.payoutAt =
-            null;
+        payment.payoutAt = null;
 
         await payment.save();
 
@@ -1256,14 +1250,13 @@ const processFarmerPayout = async (
                         }
                     }
                 );
-
-        } catch (transferError) {
+        } catch (error) {
             payment.payoutStatus =
                 'failed';
 
             await payment.save();
 
-            throw transferError;
+            throw error;
         }
 
         // ==========================
@@ -1271,8 +1264,7 @@ const processFarmerPayout = async (
         // ==========================
 
         if (
-            !transferResponse.data?.status ||
-            !transferResponse.data?.data
+            !transferResponse.data?.status
         ) {
             payment.payoutStatus =
                 'failed';
@@ -1282,22 +1274,27 @@ const processFarmerPayout = async (
             throw new Error(
                 transferResponse.data
                     ?.message ||
-                'Paystack transfer could not be initiated'
+                'Paystack transfer failed'
             );
         }
 
         // ==========================
-        // IMPORTANT:
-        // DO NOT MARK AS PAID HERE.
+        // IMPORTANT
+        // ==========================
         //
-        // Paystack may still be processing
-        // the transfer.
+        // DO NOT mark payout as paid here.
         //
-        // The webhook will update:
+        // Paystack has only accepted the
+        // transfer request.
+        //
+        // The webhook will later change:
         //
         // processing → paid
+        //
+        // or:
+        //
         // processing → failed
-        // ==========================
+        //
 
         return payment;
 
@@ -1307,39 +1304,6 @@ const processFarmerPayout = async (
             error.response?.data ||
             error.message
         );
-
-        // ==========================
-        // MARK FAILED WHEN APPROPRIATE
-        // ==========================
-
-        try {
-            if (
-                mongoose.Types.ObjectId.isValid(
-                    orderId
-                )
-            ) {
-                const payment =
-                    await Payment.findOne({
-                        order: orderId
-                    });
-
-                if (
-                    payment &&
-                    payment.payoutStatus ===
-                    'processing'
-                ) {
-                    payment.payoutStatus =
-                        'failed';
-
-                    await payment.save();
-                }
-            }
-        } catch (updateError) {
-            console.error(
-                'Unable to update payout failure status:',
-                updateError.message
-            );
-        }
 
         throw error;
     }
@@ -1389,7 +1353,7 @@ const requestFarmerPayout = async (
         return res.status(200).json({
             success: true,
             message:
-                'Farmer payout processed successfully',
+                'Farmer payout initiated successfully. Awaiting Paystack confirmation.',
             data: payment
         });
 
